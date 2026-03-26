@@ -62,7 +62,7 @@ st.write("---")
 st.write("### 🎯 OBJECTIVES")
 today = datetime.datetime.now().strftime("%A")
 is_work = today in ["Friday", "Saturday", "Sunday"]
-tasks = ["Med Pass", "Charting", "Hydration", "Safety Checks", "Drive Home"] if is_work else ["Drop-off", "Coffee", "Groceries", "Cleaning", "Pickup"]
+tasks = ["Med Pass", "Charting", "Hydration", "Safety Checks", "Drive Home"] if is_work else ["Drop-off the girls", "Coffee", "Groceries", "Cleaning", "Pickup"]
 
 for t in tasks:
     if st.button(f"✔️ {t}", key=f"btn_{t}"):
