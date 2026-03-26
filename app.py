@@ -3,56 +3,39 @@ import datetime
 import random
 import os
 
-# --- THEME & UI ---
-st.set_page_config(page_title="The Sanctuary", page_icon="🏏", layout="centered")
+# --- CONFIG ---
+st.set_page_config(page_title="The Sanctuary: Survival Mode", page_icon="🏏", layout="centered")
 
+# --- SESSION STATE INIT (Persistent Tracking) ---
+if "points" not in st.session_state:
+    st.session_state.points = 0
+if "streak" not in st.session_state:
+    st.session_state.streak = 0
+if "completed_today" not in st.session_state:
+    st.session_state.completed_today = 0
+if "boss_mood" not in st.session_state:
+    st.session_state.boss_mood = 50 
+
+# --- STYLE ---
 st.markdown("""
-    <style>
-    .main { background-color: #0e1117; color: #ffffff; }
-    .stCheckbox { font-size: 20px; padding: 12px; background: #1c1c1c; border-radius: 10px; border-left: 5px solid #ff4b4b; margin-bottom: 8px; }
-    .stButton>button { width: 100%; background-color: #ff4b4b; color: white; border: none; font-weight: bold; font-size: 1.1em; border-radius: 50px; height: 3.5em; }
-    </style>
-    """, unsafe_allow_html=True)
+<style>
+.main { background-color: #0e1117; color: white; }
+.stButton>button { width: 100%; background-color: #ff4b4b; color: white; border-radius: 50px; height: 3.5em; font-weight: bold; margin-bottom: 10px; }
+.stProgress > div > div > div > div { background-color: #ff4b4b; }
+</style>
+""", unsafe_allow_html=True)
 
-# --- LOGIC: DATE CHECK ---
+# --- DATE LOGIC ---
 today = datetime.datetime.now().strftime("%A")
 work_days = ["Friday", "Saturday", "Sunday"]
 is_work_day = today in work_days
 
-# --- NEGAN'S TEXT VARIETY ---
-work_quotes = [
-    "Jessica, people are counting on you. Take it like a champ.",
-    "Chart now, relax later. Don't make me come down there.",
-    "The hospital is a mess, but you? You're a goddamn rockstar.",
-    "Documentation is the law of the land. Don't break it.",
-    "I appreciate you, Jessica. Now get back to work."
-]
-home_quotes = [
-    "The girls are the future, Jessica. Protect the perimeter.",
-    "Laundry is a choice. A choice I suggest you make.",
-    "Easy peasy lemon squeezy. Just get the chores done.",
-    "The Sanctuary doesn't clean itself. Get moving.",
-    "You're the boss of this house. Act like it."
-]
+# --- TASK SETS ---
+work_tasks = ["Handover & Med Pass", "Charting", "Hydration Break", "Safety Checks", "Drive Home Decompression"]
+home_tasks = ["Drop-off", "Coffee Recharge", "The Scavenge (Groceries)", "Base Maintenance (Cleaning)", "The Kid Pickup"]
+tasks = work_tasks if is_work_day else home_tasks
 
-# --- APP HEADER ---
-st.title("🏏 THE SANCTUARY")
-st.write(f"### **Current Status:** {today}")
-
-if is_work_day:
-    st.error("🚨 **MISSION: THE FRONT LINES (Hospital Mode)**")
-    tasks = ["Handover & Initial Med Pass", "Mid-Shift Charting (Stay sharp!)", "Hydration/Sanity Break", "Safety Checks & Final Rounds", "Decompression Drive Home"]
-else:
-    st.success("🏠 **MISSION: HOME BASE (Logistics Mode)**")
-    tasks = ["School/Activity Drop-off", "Coffee Recharge", "The Scavenge (Groceries)", "Base Maintenance (Cleaning)", "The Kid Pickup"]
-
-st.info(f"🗨️ **THE BOSS SAYS:** \"{random.choice(work_quotes if is_work_day else home_quotes)}\"")
-
-# --- RADIO TERMINAL: MATCHING SCREENSHOT 1.24.14 AM ---
-st.write("---")
-st.write("### 📻 Savior Radio (Soundboard)")
-
-# Exact mapping from your latest file list
+# --- FULL AUDIO PLAYLIST (Mapped from your screenshots) ---
 negan_playlist = [
     "all-you-gotta-do-is-answer-one-simple-question.mp3",
     "do-not-let-me-distract-you-young-man.mp3",
@@ -64,40 +47,84 @@ negan_playlist = [
     "i-want-you-to-hear-that-again-if-you-don-t-have-something-interesting-for-us-somebody-s-going-to-die.mp3"
 ]
 
-selected_clip = st.selectbox("CHOOSE A COMMAND:", negan_playlist)
+def play_audio():
+    # 60% chance to play a sound on click
+    if random.random() < 0.6:
+        clip = random.choice(negan_playlist)
+        if os.path.exists(clip):
+            with open(clip, "rb") as f:
+                st.audio(f.read(), format="audio/mp3")
+        else:
+            st.sidebar.error(f"Missing File: {clip}")
 
-if st.button("▶️ BROADCAST ORDERS"):
-    if os.path.exists(selected_clip):
-        with open(selected_clip, "rb") as f:
-            st.audio(f.read(), format="audio/mp3")
-        st.success(f"Playing: {selected_clip}")
+# --- HEADER & MOOD ---
+st.title("🏏 THE SANCTUARY")
+st.write(f"### Mission Date: {today}")
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    if st.session_state.boss_mood > 75:
+        st.success(f"😎 BOSS MOOD: CHILL ({st.session_state.boss_mood}%)")
+    elif st.session_state.boss_mood > 40:
+        st.warning(f"😐 BOSS MOOD: WATCHING ({st.session_state.boss_mood}%)")
     else:
-        st.error(f"❌ File '{selected_clip}' not found. Check if it's in the same folder as app.py!")
+        st.error(f"💀 BOSS MOOD: PISSED ({st.session_state.boss_mood}%)")
 
-# --- OBJECTIVES & REWARDS ---
+with col2:
+    st.metric("STREAK", f"{st.session_state.streak} Days")
+
+# --- RANDOM EVENTS ---
+if random.random() < 0.20:
+    event = random.choice([
+        ("SUPPLY DROP", 20, "🎁"),
+        ("WALKERS AT THE GATE", -15, "🧟"),
+        ("BONUS LOOT", 10, "💰")
+    ])
+    st.info(f"{event[2]} EVENT: {event[0]}! Points adjusted by {event[1]}.")
+    st.session_state.points += event[1]
+
+# --- MISSIONS ---
 st.write("---")
-st.write("### 📝 Today's Objectives")
-completed = 0
+st.write("## 🎯 ACTIVE MISSIONS")
+
 for task in tasks:
-    if st.checkbox(f"**{task}**", key=f"task_{task}"):
-        completed += 1
+    if st.button(f"✔️ {task}", key=task):
+        st.session_state.points += 20
+        st.session_state.completed_today += 1
+        st.session_state.boss_mood = min(100, st.session_state.boss_mood + 8)
+        st.toast(f"Objective Secured: {task}")
+        play_audio()
 
-points = completed * 20 
-st.sidebar.title("💎 SCAVENGE VAULT")
-st.sidebar.metric("Jess's Bank", f"{points} pts")
-st.sidebar.write("---")
-if points >= 20: st.sidebar.success("✅ **20pt: Premium Coffee/Tea**")
-if points >= 40: st.sidebar.success("✅ **40pt: Cold Cider Drink**")
-if points >= 60: st.sidebar.success("✅ **60pt: 30-Min Silence**")
-if points >= 80: st.sidebar.success("✅ **80pt: 20-Min Foot Massage**")
-if points >= 100: st.sidebar.success("🔥 **100pt: FANCY DINNER OUT**")
+# --- PROGRESS ---
+progress_val = min(1.0, st.session_state.completed_today / len(tasks))
+st.progress(progress_val)
 
-st.progress(int((completed / len(tasks)) * 100) if tasks else 0)
+# --- LUCILLE & SPEED RUN ---
+st.write("---")
+c1, c2 = st.columns(2)
+with c1:
+    if st.button("🏏 LUCILLE DECIDES"):
+        action = random.choice(["DO THIS NOW: " + random.choice(tasks), "DROP EVERYTHING → HYDRATE", "5 MIN SPEED CLEAN", "TAKE A BREAK"])
+        st.error(action)
+        play_audio()
+with c2:
+    if st.button("⚡ SPEED RUN (10 MIN)"):
+        st.warning("⏱️ GO! Set a timer for 10 minutes. DO NOT STOP.")
 
-# --- CHOICE PARALYSIS TOOL ---
-if st.button("🏏 LUCILLE, CHOOSE MY FATE"):
-    st.warning(f"Lucille says: **{random.choice(tasks)}**. No excuses!")
+# --- SIDEBAR REWARDS ---
+st.sidebar.title("💎 THE VAULT")
+st.sidebar.metric("Current Points", st.session_state.points)
 
-# --- QUICK DEBUGGER ---
-with st.expander("🛠️ Folder Check"):
-    st.write("Files currently in Sanctuary folder:", os.listdir("."))
+st.sidebar.write("### Unlocked Spoils")
+if st.sidebar.button("🍺 Use 40pts: Cold Cider"):
+    if st.session_state.points >= 40: st.session_state.points -= 40
+if st.sidebar.button("🦶 Use 80pts: Foot Massage"):
+    if st.session_state.points >= 80: st.session_state.points -= 80
+if st.sidebar.button("🍽️ Use 120pts: Fancy Dinner"):
+    if st.session_state.points >= 120: st.session_state.points -= 120
+
+if st.sidebar.button("🔄 RESET DAY"):
+    st.session_state.completed_today = 0
+    st.session_state.boss_mood = 50
+    st.rerun()
