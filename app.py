@@ -3,22 +3,41 @@ import datetime
 import random
 import os
 
-# --- 1. SETTINGS ---
+# --- 1. SETTINGS & THEME ---
 st.set_page_config(page_title="The Sanctuary", page_icon="🏏", layout="centered")
 
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: white; }
     .stButton>button { width: 100%; background-color: #ff4b4b; color: white; border-radius: 50px; height: 3.5em; font-weight: bold; border: none; }
-    h1, h2, h3 { color: #ff4b4b; text-transform: uppercase; }
+    .stButton>button:hover { background-color: #ff3333; border: 1px solid white; box-shadow: 0px 0px 15px #ff4b4b; }
+    h1, h2, h3 { color: #ff4b4b; text-transform: uppercase; letter-spacing: 2px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. DATA ---
+# --- 2. PERSISTENT DATA ---
 if "points" not in st.session_state: st.session_state.points = 0
 if "boss_mood" not in st.session_state: st.session_state.boss_mood = 50
 
-# --- 3. THE 9 FILENAMES (Literal from 1:48 AM Screenshot) ---
+# --- 3. JESSICA'S PERSONALIZED QUOTES & LOGIC ---
+today = datetime.datetime.now().strftime("%A")
+is_work_day = today in ["Friday", "Saturday", "Sunday"]
+
+# Quotes for the top of the app
+work_quotes = [
+    "Jessica, people are counting on you. Take it like a champ.",
+    "The hospital is a mess, but you? You're a goddamn rockstar.",
+    "Documentation is the law of the land. Don't break it, Jess.",
+    "I appreciate you, Jessica. Now get back to work."
+]
+home_quotes = [
+    "The girls are the future, Jessica. Protect the perimeter.",
+    "Easy peasy lemon squeezy. Just get the chores done.",
+    "You're the boss of this house. Act like it.",
+    "The Sanctuary doesn't clean itself. Get moving, Jess."
+]
+
+# --- 4. THE 9 FILENAMES (From Screenshot 1:48 AM) ---
 negan_playlist = [
     "all-you-gotta-do-is-answer-one-simple-question.mp3",
     "are-you-cooperating.mp3",
@@ -31,58 +50,76 @@ negan_playlist = [
     "i-want-you-to-hear-that-again-if-you-don-t-have-something-interesting-for-us-somebody-s-going-to-die.mp3"
 ]
 
-# --- 4. HEADER ---
+def play_radio():
+    clip = random.choice(negan_playlist)
+    if os.path.exists(clip):
+        st.audio(open(clip, 'rb').read(), format='audio/mp3')
+    else:
+        st.sidebar.error(f"Signal Lost: {clip}")
+
+# --- 5. HEADER & MOOD ---
 st.title("🏏 THE SANCTUARY")
-st.write(f"### **Commander:** Jessica")
+st.write(f"### **Commander:** Jessica | **Status:** {today}")
 
-# --- 5. THE RADIO (PLAY ALL MODE) ---
-st.write("---")
-st.write("### 📻 SAVIOR RADIO")
+# Display the personalized quote
+current_quote = random.choice(work_quotes if is_work_day else home_quotes)
+st.info(f"🗨️ **THE BOSS SAYS:** \"{current_quote}\"")
 
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("🎲 RANDOM CLIP"):
-        clip = random.choice(negan_playlist)
-        if os.path.exists(clip):
-            st.audio(open(clip, 'rb').read(), format='audio/mp3')
-            st.caption(f"Playing: {clip[:30]}...")
-        else:
-            st.error("File not found. Check GitHub root.")
-
-with col2:
-    if st.button("📜 PLAY ALL IN ORDER"):
-        st.info("Files loaded below. Scroll to play through the playlist!")
-        for clip in negan_playlist:
-            if os.path.exists(clip):
-                st.write(f"**{clip.split('.')[0].replace('-', ' ').title()}**")
-                st.audio(open(clip, 'rb').read(), format='audio/mp3')
+# Mood System
+mood = st.session_state.boss_mood
+if mood > 75: st.success(f"😎 NEGAN'S MOOD: Damn proud of you, Jess ({mood}%)")
+elif mood > 40: st.warning(f"😐 NEGAN'S MOOD: Watching your back, Jess ({mood}%)")
+else: st.error(f"💀 NEGAN'S MOOD: Don't make him ask twice, Jess ({mood}%)")
 
 # --- 6. MISSIONS ---
 st.write("---")
-st.write("### 🎯 OBJECTIVES")
-today = datetime.datetime.now().strftime("%A")
-is_work = today in ["Friday", "Saturday", "Sunday"]
-tasks = ["Med Pass", "Charting", "Hydration", "Safety Checks", "Drive Home"] if is_work else ["Drop-off the girls", "Coffee", "Groceries", "Cleaning", "Pickup"]
+st.write("### 🎯 ACTIVE OBJECTIVES")
+
+if is_work_day:
+    tasks = ["Handover & Med Pass", "Charting (Don't let 'em catch you, Jess!)", "Hydration Break", "Safety Checks", "Drive Home Decompression"]
+else:
+    tasks = ["Kid Drop-off", "Coffee Recharge", "The Scavenge (Groceries)", "Base Maintenance", "The Kid Pickup"]
 
 for t in tasks:
     if st.button(f"✔️ {t}", key=f"btn_{t}"):
         st.session_state.points += 20
-        st.toast(f"Good work, Jessica.")
-        # Play a random order after a task
-        c = random.choice(negan_playlist)
-        if os.path.exists(c):
-            st.audio(open(c, 'rb').read(), format='audio/mp3')
+        st.session_state.boss_mood = min(100, st.session_state.boss_mood + 10)
+        st.toast(f"Good work, Jessica. {t} complete.")
+        play_radio()
 
-# --- 7. VAULT ---
+# --- 7. CHAOS TOOLS ---
+st.write("---")
+c1, c2 = st.columns(2)
+with c1:
+    if st.button("🏏 LUCILLE DECIDES"):
+        st.warning(f"JESSICA, DO THIS NOW: {random.choice(tasks)}")
+        play_radio()
+with c2:
+    if st.button("⚡ JESS'S SPEED RUN"):
+        st.error("⏱️ 10 MINUTES. GO! NO THINKING.")
+
+# --- 8. REWARDS VAULT (SIDEBAR) ---
 st.sidebar.title("💎 JESSICA'S VAULT")
-st.sidebar.metric("Points", f"{st.session_state.points}")
-if st.sidebar.button("🍺 Cider (40)"):
-    if st.session_state.points >= 40: st.session_state.points -= 40
-if st.sidebar.button("🦶 Massage (80)"):
-    if st.session_state.points >= 80: st.session_state.points -= 80
-if st.sidebar.button("🍽️ Fancy Dinner (150)"):
-    if st.session_state.points >= 150: st.session_state.points -= 150
+st.sidebar.metric("Points Bank", f"{st.session_state.points} pts")
+st.sidebar.write("---")
 
-if st.sidebar.button("🔄 RESET"):
-    st.session_state.points = 0
+rewards = [
+    ("☕ Premium Coffee", 20),
+    ("🍺 Cold Cider", 40),
+    ("🦶 Foot Massage", 80),
+    ("🍽️ Fancy Dinner", 150),
+    ("🛍️ Shopping Spree", 300)
+]
+
+for name, cost in rewards:
+    if st.sidebar.button(f"{name} ({cost})"):
+        if st.session_state.points >= cost:
+            st.session_state.points -= cost
+            st.sidebar.balloons()
+            st.sidebar.success(f"CLAIMED: {name}")
+        else:
+            st.sidebar.error("Earn more points, Jessica.")
+
+if st.sidebar.button("🔄 RESET DAY"):
+    st.session_state.boss_mood = 50
     st.rerun()
