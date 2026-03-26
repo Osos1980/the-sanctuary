@@ -3,19 +3,20 @@ import datetime
 import random
 import os
 
-# --- 1. CONFIG & THEME ---
-st.set_page_config(page_title="The Sanctuary", page_icon="🏏", layout="centered")
+# --- 1. CONFIG & PERSONALIZATION ---
+st.set_page_config(page_title="The Sanctuary: Jessica's Command", page_icon="🏏", layout="centered")
 
+# Custom CSS for Jessica's Saviors theme
 st.markdown("""
     <style>
     .main { background-color: #0e1117; color: white; }
-    .stButton>button { width: 100%; background-color: #ff4b4b; color: white; border-radius: 50px; height: 3em; font-weight: bold; border: none; }
+    .stButton>button { width: 100%; background-color: #ff4b4b; color: white; border-radius: 50px; height: 3.5em; font-weight: bold; border: none; }
     .stButton>button:hover { background-color: #ff3333; border: 1px solid white; box-shadow: 0px 0px 15px #ff4b4b; }
     h1 { color: #ff4b4b; text-transform: uppercase; letter-spacing: 2px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. PERSISTENT DATA (Jessica's Progress) ---
+# --- 2. PERSISTENT DATA ---
 if "points" not in st.session_state: st.session_state.points = 0
 if "completed_today" not in st.session_state: st.session_state.completed_today = 0
 if "boss_mood" not in st.session_state: st.session_state.boss_mood = 50
@@ -26,13 +27,14 @@ work_days = ["Friday", "Saturday", "Sunday"]
 is_work_day = today in work_days
 
 if is_work_day:
-    tasks = ["Handover & Med Pass", "Charting (Stay ahead, Jess!)", "Hydration Break", "Final Safety Checks", "Decompression Drive Home"]
-    header_msg = "🚨 FRONT LINE DUTY: HOSPITAL MISSION"
+    tasks = ["Handover & Med Pass", "Charting (Stay sharp, Jess!)", "Hydration Break", "Final Safety Checks", "Decompression Drive"]
+    header_msg = "🚨 FRONT LINE: HOSPITAL MISSION"
 else:
-    tasks = ["Kid Drop-off", "Sanctuary Coffee Recharge", "Scavenge Run (Groceries)", "Base Maintenance", "The Kid Pickup"]
+    tasks = ["Kid Drop-off", "Coffee Recharge", "Scavenge (Groceries)", "Base Maintenance", "The Kid Pickup"]
     header_msg = "🏠 HOME BASE LOGISTICS"
 
-# --- 4. THE NEGAN AUDIO ENGINE ---
+# --- 4. THE JESSICA AUDIO ENGINE ---
+# These match your latest file list exactly
 negan_playlist = [
     "all-you-gotta-do-is-answer-one-simple-question.mp3",
     "do-not-let-me-distract-you-young-man.mp3",
@@ -45,16 +47,16 @@ negan_playlist = [
 ]
 
 def play_negan():
-    """Plays audio only if the file exists to prevent crashing."""
+    """Forces audio playback by creating a new audio element each time."""
     clip = random.choice(negan_playlist)
     if os.path.exists(clip):
-        with open(clip, "rb") as f:
-            st.audio(f.read(), format="audio/mp3", autoplay=True)
+        audio_file = open(clip, 'rb')
+        audio_bytes = audio_file.read()
+        st.audio(audio_bytes, format='audio/mp3')
     else:
-        # Subtle warning in sidebar if a file is missing
-        st.sidebar.warning(f"Audio signal lost: {clip}")
+        st.sidebar.error(f"Missing: {clip}")
 
-# --- 5. MAIN INTERFACE ---
+# --- 5. INTERFACE ---
 st.title("🏏 THE SANCTUARY")
 st.write(f"### **Commander:** Jessica | **Status:** {today}")
 if is_work_day: st.error(header_msg)
@@ -62,48 +64,31 @@ else: st.success(header_msg)
 
 # Mood Indicator
 mood = st.session_state.boss_mood
-if mood > 75: st.success(f"😎 NEGAN'S MOOD: Damn proud of you, Jess ({mood}%)")
-elif mood > 40: st.warning(f"😐 NEGAN'S MOOD: Watching your back, Jess ({mood}%)")
-else: st.error(f"💀 NEGAN'S MOOD: Don't make him ask twice, Jess ({mood}%)")
+if mood > 75: st.success(f"😎 BOSS MOOD: Damn proud of you, Jess ({mood}%)")
+elif mood > 40: st.warning(f"😐 BOSS MOOD: Watching your back, Jess ({mood}%)")
+else: st.error(f"💀 BOSS MOOD: Don't make him ask twice, Jess ({mood}%)")
 
 st.write("---")
 
-# Task Buttons
-st.write("### 🎯 ACTIVE OBJECTIVES")
+# --- 6. MISSIONS ---
+st.write("### 🎯 ACTIVE MISSIONS")
 for t in tasks:
     if st.button(f"✔️ {t}", key=f"btn_{t}"):
         st.session_state.points += 20
         st.session_state.completed_today += 1
         st.session_state.boss_mood = min(100, st.session_state.boss_mood + 10)
+        st.toast(f"Objective Secured, Jess: {t}")
         play_negan()
-        st.toast(f"Objective Secured: {t}")
 
-# Progress Bar
-progress_val = min(1.0, st.session_state.completed_today / len(tasks))
-st.progress(progress_val)
-
-# --- 6. TOOLS & CHAOS ---
-st.write("---")
-col_a, col_b = st.columns(2)
-with col_a:
-    if st.button("🏏 LUCILLE'S CHOICE"):
-        play_negan()
-        st.warning(f"JESS, DO THIS NOW: {random.choice(tasks)}")
-with col_b:
-    if st.button("⚡ JESS'S SPEED RUN"):
-        st.error("⏱️ 10 MINS. GO!")
-
-# --- 7. THE VAULT (SIDEBAR) ---
+# --- 7. REWARDS VAULT (SIDEBAR) ---
 st.sidebar.title("💎 JESSICA'S VAULT")
-st.sidebar.metric("Scavenge Points", f"{st.session_state.points} pts")
-st.sidebar.write("---")
+st.sidebar.metric("Points", f"{st.session_state.points}")
 
 rewards = [
     ("☕ Premium Coffee", 20),
     ("🍺 Cold Cider", 40),
-    ("🤫 30-Min Silence", 60),
     ("🦶 Foot Massage", 80),
-    ("🍽️ Fancy Dinner Out", 150),
+    ("🍽️ Fancy Dinner", 150),
     ("🛍️ Shopping Spree", 300)
 ]
 
@@ -112,7 +97,7 @@ for name, cost in rewards:
         if st.session_state.points >= cost:
             st.session_state.points -= cost
             st.sidebar.balloons()
-            st.sidebar.success(f"ENJOY, JESS: {name}")
+            st.sidebar.success(f"CLAIMED: {name}")
         else:
             st.sidebar.error("Earn more points, Jessica.")
 
