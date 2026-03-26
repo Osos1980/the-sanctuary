@@ -10,29 +10,22 @@ import os
 st.set_page_config(page_title="The Sanctuary", page_icon="🏏", layout="centered")
 SAVE_FILE = "sanctuary_save.json"
 
-# --- 2. JESSICA'S PERSONAL QUOTE LIBRARY ---
-# These are the specific "Voices" you were looking for.
-MORNING_GREETINGS = [
-    "Wakey wakey, Jessica. Eggs and bakey... Lucille is hungry for some productivity.",
-    "Look at you, Jessica. Still breathing. Let's make it count today.",
-    "I am everywhere, Jessica. Especially in your to-do list. Get to it.",
-    "Today is a brand new day in the Sanctuary. Don't disappoint me."
+# --- 2. JESSICA'S PERSONAL VOICE COMMANDS ---
+MORNING_QUOTES = [
+    "Wakey wakey, Jessica. Eggs and bakey... Lucille is hungry.",
+    "Look at you, Jessica. Still breathing. Get to work.",
+    "I am everywhere, Jessica. Don't make me wait.",
+    "New day, Jessica. New rules. My rules."
 ]
 
-DAY_ENCOURAGEMENT = [
-    "You're killing it, Jessica. Keep that momentum.",
-    "I'm starting to think you've got guts, Jessica. Real guts.",
-    "Look at you go. Efficient. Cold. Productive.",
-    "That's how a Saviour does it. Good job."
+FINISH_QUOTES = [
+    "Hot diggity dog! Good job, Jessica.",
+    "See? That wasn't so hard, was it?",
+    "That’s how a professional does it, Jessica.",
+    "Simple. Efficient. I like it."
 ]
 
-IDLE_WARNINGS = [
-    "Tick tock, Jessica. I don't like being bored.",
-    "Are we having a little nap? Because I'm wide awake.",
-    "You're drifting, Jessica. Focus. Now."
-]
-
-# --- 3. PERSISTENCE & INIT ---
+# --- 3. PERSISTENCE ---
 def load_data():
     if os.path.exists(SAVE_FILE):
         try:
@@ -45,6 +38,8 @@ def save_data():
     with open(SAVE_FILE, "w") as f: json.dump(safe_data, f)
 
 data = load_data()
+
+# --- 4. INITIALIZATION ---
 def init(k, v):
     if k not in st.session_state: st.session_state[k] = data.get(k, v)
 
@@ -54,68 +49,69 @@ init("level", 1)
 init("completed_tasks", [])
 init("manual_tasks", [])
 init("boss_hp", 100)
-init("last_action", time.time())
 init("last_day", "")
-init("last_voice_msg", "Standing by...")
+init("last_voice_msg", "Awaiting authorization, Jessica...")
 
-# --- 4. THE UPDATED VOICE ENGINE ---
+# --- 5. THE VOICE ENGINE (FORCED SCRIPT) ---
 def negan_speak(text):
     st.session_state.last_voice_msg = text
-    # 1. Visual Backup (In case sound is blocked)
+    # This is a 'Toast' popup so you SEE it instantly
     st.toast(f"🧟 {text}") 
-    
-    # 2. Browser Audio Script
+    # This is the JS that triggers the browser voice
     st.markdown(f"""
     <script>
-    window.speechSynthesis.cancel(); // Clear queue
     var msg = new SpeechSynthesisUtterance("{text}");
     msg.lang = 'en-US';
     msg.rate = 0.8; 
     msg.pitch = 0.5;
+    window.speechSynthesis.cancel(); 
     window.speechSynthesis.speak(msg);
     </script>
     """, unsafe_allow_html=True)
 
-# --- 5. DAILY GREETING LOGIC ---
-central = pytz.timezone('US/Central')
-today = str(datetime.datetime.now(central).date())
-
-# If Jessica opens the app and it's a new day:
-if st.session_state.last_day != today:
-    st.session_state.completed_tasks = []
-    st.session_state.last_day = today
-    greeting = random.choice(MORNING_GREETINGS)
-    negan_speak(greeting) # Trigger Morning Voice
-    save_data()
-
-# --- 6. INTERFACE ---
+# --- 6. INTERFACE & "WAKE UP" BUTTON ---
 st.title("🏏 THE SANCTUARY")
 
-# THE VISUAL GREETING (Always visible)
-st.info(f"🧟 **NEGAN'S MESSAGE:** {st.session_state.last_voice_msg}")
+# --- THE FIX: MANDATORY START BUTTON ---
+# Browsers REQUIRE a click to allow sound.
+if st.button("🔊 ACTIVATE NEGAN / START DAY"):
+    central = pytz.timezone('US/Central')
+    today = str(datetime.datetime.now(central).date())
+    
+    if st.session_state.last_day != today:
+        st.session_state.completed_tasks = []
+        st.session_state.last_day = today
+        line = random.choice(MORNING_QUOTES)
+    else:
+        line = "I'm already here, Jessica. Get back to work."
+    
+    negan_speak(line)
+    save_data()
 
-c1, c2, c3 = st.columns(3)
-c1.metric("LEVEL", st.session_state.level)
-c2.metric("XP", f"{st.session_state.xp}/100")
-c3.metric("POINTS", st.session_state.points)
+# VISUAL FEEDBACK
+st.info(f"🧟 **NEGAN'S CURRENT ORDER:** {st.session_state.last_voice_msg}")
 
-# --- 7. MANUAL MISSION ADDER ---
+col1, col2 = st.columns(2)
+col1.metric("LEVEL", st.session_state.level)
+col2.metric("POINTS", st.session_state.points)
+st.progress(st.session_state.xp / 100)
+
+# --- 7. MANUAL MISSIONS ---
 st.write("### ➕ ADD CUSTOM MISSION")
-with st.form("add_task", clear_on_submit=True):
-    new_task = st.text_input("What's the play, Jessica?")
-    if st.form_submit_button("ADD TO LOG"):
-        if new_task:
-            st.session_state.manual_tasks.append(new_task)
-            negan_speak(f"Adding {new_task}. Do it right.")
-            save_data()
-            st.rerun()
+new_t = st.text_input("New objective, Jessica?", key="input")
+if st.button("ADD TO LOG"):
+    if new_t:
+        st.session_state.manual_tasks.append(new_t)
+        negan_speak(f"Adding {new_t}. Don't screw it up.")
+        save_data()
+        st.rerun()
 
 # --- 8. MISSION LOG ---
 st.write("### 🎯 ACTIVE MISSIONS")
-base_tasks = ["Coffee recharge", "Clean Base", "Laundry", "Organize"]
-all_tasks = base_tasks + st.session_state.manual_tasks
+presets = ["Coffee", "Clean Base", "Laundry", "Organize"]
+all_t = presets + st.session_state.manual_tasks
 
-for t in all_tasks:
+for t in all_t:
     if t not in st.session_state.completed_tasks:
         if st.button(f"✔️ {t}", key=t):
             st.session_state.completed_tasks.append(t)
@@ -125,15 +121,14 @@ for t in all_tasks:
             if st.session_state.xp >= 100:
                 st.session_state.level += 1
                 st.session_state.xp = 0
-                negan_speak("Level up, Jessica. You're becoming a legend.")
+                negan_speak("Level up, Jessica. You're an asset.")
             else:
-                negan_speak(random.choice(DAY_ENCOURAGEMENT))
+                negan_speak(random.choice(FINISH_QUOTES))
             
-            st.session_state.last_action = time.time()
             save_data()
             st.rerun()
     else:
-        st.button(f"✅ {t} (SECURED)", disabled=True, key=f"done_{t}")
+        st.button(f"✅ {t} (SECURED)", disabled=True)
 
 # --- 9. BOSS FIGHT ---
 st.write("---")
@@ -145,17 +140,13 @@ if st.button("⚔️ ATTACK BOSS"):
         st.session_state.boss_hp = 100
         st.session_state.points += 100
         st.balloons()
-        negan_speak("Boss down. Not bad, Jessica. Not bad at all.")
+        negan_speak("Boss down. Easy peasy, Jessica.")
     else:
         negan_speak(f"Hit for {dmg}!")
     save_data()
 
-# --- 10. VOICE FIX & RESET ---
-st.sidebar.title("⚙️ COMMANDS")
-if st.sidebar.button("🔊 UNMUTE/HEAR NEGAN"):
-    negan_speak(st.session_state.last_voice_msg)
-
-if st.sidebar.button("💀 FULL RESET"):
+# SIDEBAR RESET
+if st.sidebar.button("💀 DELETE ALL"):
     if os.path.exists(SAVE_FILE): os.remove(SAVE_FILE)
     st.session_state.clear()
     st.rerun()
