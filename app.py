@@ -11,11 +11,12 @@ st.markdown("""
     <style>
     .main { background-color: #1a1a1a; color: #ffffff; }
     .stCheckbox { font-size: 18px; padding: 8px; background: #262626; border-radius: 8px; margin-bottom: 5px; }
-    .stButton>button { width: 100%; background-color: #444; color: #ff4b4b; border: 2px solid #ff4b4b; font-weight: bold; height: 3em; }
+    .stButton>button { width: 100%; background-color: #444; color: #ff4b4b; border: 2px solid #ff4b4b; font-weight: bold; height: 3.5em; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- LOGIC: WORK VS HOME ---
+# Since it is now Thursday night/Friday morning, the app will switch modes automatically.
 today = datetime.datetime.now().strftime("%A")
 work_days = ["Friday", "Saturday", "Sunday"]
 is_work_day = today in work_days
@@ -53,26 +54,30 @@ st.info(f"**Negan says:** '{quote}'")
 st.write("---")
 st.write("### 📻 Sanctuary Radio")
 
-# These names match your screenshot exactly. 
-# NOTE: If a sound doesn't play, check if GitHub shortened the filename!
+# Updated list with full names and shortened names just in case
 negan_clips = [
     "do-not-let-me-distract-you-young-man.mp3",
     "easy-peasy-lemon-squeezy.mp3",
-    "god-damn-it-that-is-the-coolest-thing-i-ve-...mp3",
+    "god-damn-it-that-is-the-coolest-thing-i-ve-ever-seen.mp3",
+    "god-damn-it-that-is-the-coolest-thing-i-ve-...mp3", 
     "here-goes-pay-attention.mp3",
     "i-gotta-pick-somebody.mp3",
     "i-m-negan.mp3",
+    "i-want-you-to-hear-that-again-if-you-don-t-mind.mp3",
     "i-want-you-to-hear-that-again-if-you-don-t-...mp3"
 ]
 
 if st.button("🔊 HEAR THE BOSS"):
-    chosen_clip = random.choice(negan_clips)
-    if os.path.exists(chosen_clip):
+    # Filter only the files that actually exist on your GitHub right now
+    available_clips = [f for f in negan_clips if os.path.exists(f)]
+    
+    if available_clips:
+        chosen_clip = random.choice(available_clips)
         audio_file = open(chosen_clip, 'rb')
         st.audio(audio_file.read(), format='audio/mp3')
         st.caption(f"Playing: {chosen_clip}")
     else:
-        st.error(f"File '{chosen_clip}' not detected. Ensure the filename matches GitHub exactly!")
+        st.error("Radio Silence. GitHub filenames don't match. Click a file on GitHub to see its full name!")
 
 # --- TASK LIST ---
 st.write("---")
@@ -98,7 +103,6 @@ if points >= 30: st.sidebar.success("🔓 30pt: Foot Massage")
 if points >= 50: st.sidebar.success("🔓 50pt: Choice of Dinner")
 if points >= 100: st.sidebar.success("🔓 100pt: Total Day Off")
 
-# Win Condition
 if score == 100:
     st.balloons()
     st.success("🔥 'Hot diggity dog! You did it, Jess! Go put your feet up.'")
