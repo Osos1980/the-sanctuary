@@ -78,7 +78,7 @@ st.write("### 🎯 ACTIVE OBJECTIVES")
 if is_work_day:
     tasks = ["Handover & Med Pass", "Charting (Don't let 'em catch you, Jess!)", "Hydration Break", "Safety Checks", "Drive Home Decompression"]
 else:
-    tasks = ["Kid Drop-off", "Coffee Recharge", "The Scavenge (Groceries)", "Base Maintenance", "The Kid Pickup"]
+    tasks = ["Girls Drop-off", "Coffee Recharge", "The Scavenge (Groceries)", "Base Maintenance", "The Girls Pickup"]
 
 for t in tasks:
     if st.button(f"✔️ {t}", key=f"btn_{t}"):
