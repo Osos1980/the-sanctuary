@@ -100,8 +100,8 @@ st.sidebar.metric("Jessica's Points", f"{points} pts")
 st.sidebar.write("---")
 st.sidebar.write("### Available Rewards")
 if points >= 30: st.sidebar.success("🔓 30pt: Foot Massage")
-if points >= 50: st.sidebar.success("🔓 50pt: Choice of Dinner")
-if points >= 100: st.sidebar.success("🔓 100pt: Total Day Off")
+if points >= 50: st.sidebar.success("🔓 50pt: Cider Drink")
+if points >= 100: st.sidebar.success("🔓 100pt: Choice of Dinner")
 
 if score == 100:
     st.balloons()
