@@ -63,6 +63,8 @@ init("last_task_time", time.time())
 init("negan_mood", 0)
 init("last_interrupt", 0)
 init("weekly", [0]*7)
+init("last_jess_quote", "")
+init("last_quote_time", 0)
 
 # --- TIME ---
 central = pytz.timezone('US/Central')
@@ -85,7 +87,6 @@ if st.session_state.last_day != today:
 def negan_speak(text):
     st.session_state.last_msg = text
     st.toast(text)
-
     st.markdown(f"""
     <script>
     window.speechSynthesis.cancel();
@@ -95,6 +96,17 @@ def negan_speak(text):
     speechSynthesis.speak(msg);
     </script>
     """, unsafe_allow_html=True)
+
+# --- JESSICA MOTIVATION ---
+JESS_QUOTES = [
+    "Jessica, you’ve handled harder days than this.",
+    "Just one step. That’s all you need.",
+    "Momentum beats perfection.",
+    "You don’t need motivation—you need motion.",
+    "Future you will thank you.",
+    "One task changes everything.",
+    "Progress, not pressure.",
+]
 
 # --- HEADER ---
 st.title("🏏 THE SANCTUARY")
@@ -112,10 +124,17 @@ with col2:
     </div>
     """, unsafe_allow_html=True)
 
-# --- INTERRUPT SYSTEM ---
-now_time = time.time()
-if now_time - st.session_state.last_interrupt > random.randint(180,300):
-    st.session_state.last_interrupt = now_time
+# --- JESSICA QUOTE ---
+if time.time() - st.session_state.last_quote_time > 120:
+    q = random.choice(JESS_QUOTES)
+    if q != st.session_state.last_jess_quote:
+        st.session_state.last_jess_quote = q
+        st.session_state.last_quote_time = time.time()
+        st.info(f"💬 {q}")
+
+# --- INTERRUPT ---
+if time.time() - st.session_state.last_interrupt > random.randint(180,300):
+    st.session_state.last_interrupt = time.time()
     msg = random.choice([
         "Do one task. Now.",
         "Move.",
@@ -136,20 +155,28 @@ st.progress(st.session_state.xp / 100)
 # --- MISSIONS ---
 st.write("## 🎯 MISSIONS")
 
-presets = ["Coffee", "Clean", "Laundry", "Reset"]
-tasks = presets + st.session_state.manual_tasks
+with st.expander("➕ ADD NEW MISSION"):
+    new_task = st.text_input("New mission:")
+    if st.button("ADD"):
+        if new_task and new_task not in st.session_state.manual_tasks:
+            st.session_state.manual_tasks.append(new_task)
+            negan_speak(f"Mission added: {new_task}")
+            save_data()
+            st.rerun()
+
+tasks = ["Coffee", "Clean", "Laundry", "Reset"] + st.session_state.manual_tasks
 
 for t in tasks:
     if t not in st.session_state.completed_tasks:
         if st.button(f"✔️ {t}", key=t):
 
-            now_time = time.time()
-            if now_time - st.session_state.last_task_time < 120:
+            now_t = time.time()
+            if now_t - st.session_state.last_task_time < 120:
                 st.session_state.combo += 1
             else:
                 st.session_state.combo = 1
 
-            st.session_state.last_task_time = now_time
+            st.session_state.last_task_time = now_t
 
             bonus = st.session_state.combo * 5
 
@@ -157,6 +184,9 @@ for t in tasks:
             st.session_state.points += 25 + bonus
             st.session_state.xp += 20 + bonus
             st.session_state.weekly[weekday] += 1
+
+            if random.random() > 0.5:
+                st.info(f"💬 {random.choice(JESS_QUOTES)}")
 
             if st.session_state.combo >= 3:
                 negan_speak("That's momentum.")
@@ -173,16 +203,25 @@ for t in tasks:
     else:
         st.button(f"✅ {t}", disabled=True, key=f"d{t}")
 
+    # REMOVE CUSTOM
+    if t in st.session_state.manual_tasks:
+        if st.button(f"❌ Remove {t}", key=f"rm{t}"):
+            st.session_state.manual_tasks.remove(t)
+            save_data()
+            st.rerun()
+
 # --- FOCUS ---
 st.write("## ⏱️ FOCUS")
 
-if st.button("2 MIN"):
-    st.session_state.timer = time.time()
-    st.session_state.timer_len = 120
-
-if st.button("5 MIN"):
-    st.session_state.timer = time.time()
-    st.session_state.timer_len = 300
+colA, colB = st.columns(2)
+with colA:
+    if st.button("2 MIN"):
+        st.session_state.timer = time.time()
+        st.session_state.timer_len = 120
+with colB:
+    if st.button("5 MIN"):
+        st.session_state.timer = time.time()
+        st.session_state.timer_len = 300
 
 if "timer" in st.session_state:
     remain = max(0, st.session_state.timer_len - int(time.time() - st.session_state.timer))
@@ -200,6 +239,7 @@ if st.button("⚔️ ATTACK"):
     st.session_state.boss_hp -= dmg
     if dmg > 35:
         st.success(f"CRITICAL {dmg}")
+        negan_speak("Now that's how it's done.")
     else:
         st.info(dmg)
 
@@ -217,9 +257,9 @@ if st.button("🔦 SCAVENGE"):
             st.session_state.points += win
             negan_speak("Jackpot.")
         else:
-            negan_speak("Nothing.")
+            negan_speak("Nothing out there.")
 
-# --- INTERRUPT BUTTON ---
+# --- SNAP BUTTON ---
 if st.button("🧠 SNAP ME OUT OF IT"):
     msg = random.choice(["Do one task", "Move", "Drink water"])
     st.error(msg)
