@@ -7,7 +7,7 @@ import json
 import os
 
 # --- CONFIG ---
-st.set_page_config(page_title="The Sanctuary", page_icon="🏏", layout="centered")
+st.set_page_config(page_title="Jessica's Sanctuary", page_icon="🏏", layout="centered")
 SAVE_FILE = "sanctuary_save.json"
 
 # --- STYLE ---
