@@ -6,65 +6,50 @@ import time
 import json
 import os
 
-# --- 1. CONFIG & STYLING ---
+# --- CONFIG ---
 st.set_page_config(page_title="The Sanctuary", page_icon="🏏", layout="centered")
 SAVE_FILE = "sanctuary_save.json"
 
+# --- STYLE ---
 st.markdown("""
 <style>
-    .main { background-color: #0e1117; color: white; }
-    .stButton>button { 
-        width: 100%; height: 60px; font-size: 18px; 
-        border-radius: 15px; background-color: #ff4b4b; 
-        color: white; font-weight: bold; border: none;
-    }
-    .stProgress > div > div > div > div { background-color: #ff4b4b; }
-    .negan-box { 
-        background-color: #1e2129; padding: 20px; 
-        border-left: 10px solid #ff4b4b; border-radius: 10px; 
-        margin-bottom: 25px;
-    }
-    h1, h2, h3 { color: #ff4b4b; text-transform: uppercase; text-align: center; }
+.main { background-color: #0e1117; color: white; }
+.stButton>button {
+    width: 100%; height: 60px;
+    font-size: 18px; border-radius: 15px;
+    background-color: #ff4b4b; color: white;
+    font-weight: bold;
+}
+.negan-box {
+    background:#1e2129;
+    padding:15px;
+    border-left:6px solid #ff4b4b;
+    border-radius:10px;
+}
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. THE VOICE & QUOTE REPERTOIRE ---
-QUOTES = {
-    "morning": [
-        "Wakey wakey, Jessica. Eggs and bakey... Lucille is hungry.",
-        "Look at you, Jessica. Still breathing. Get to work.",
-        "New day, Jessica. New rules. My rules.",
-        "The Sanctuary doesn't run itself, Jessica. Move it!"
-    ],
-    "praise": [
-        "Hot diggity dog! Good job, Jessica.",
-        "That’s how a professional does it, Jessica.",
-        "I’m starting to think you’ve got guts.",
-        "Simple. Efficient. I like it."
-    ],
-    "games": [
-        "You're gambling with my resources, Jessica? Bold.",
-        "Easy pickings out there today.",
-        "Winning is a habit, Jessica. Don't break it."
-    ]
-}
-
-# --- 3. DATA CORE ---
+# --- DATA ---
 def load_data():
     if os.path.exists(SAVE_FILE):
         try:
-            with open(SAVE_FILE, "r") as f: return json.load(f)
-        except: return {}
+            return json.load(open(SAVE_FILE))
+        except:
+            return {}
     return {}
 
 def save_data():
-    safe_data = {k: v for k, v in st.session_state.items() if isinstance(v, (int, float, str, list, dict, bool))}
-    with open(SAVE_FILE, "w") as f: json.dump(safe_data, f)
+    safe = {k: v for k, v in st.session_state.items()
+            if isinstance(v, (int, float, str, list, dict, bool))}
+    json.dump(safe, open(SAVE_FILE, "w"))
 
 data = load_data()
-def init(k, v):
-    if k not in st.session_state: st.session_state[k] = data.get(k, v)
 
+def init(k, v):
+    if k not in st.session_state:
+        st.session_state[k] = data.get(k, v)
+
+# --- STATE ---
 init("points", 100)
 init("xp", 0)
 init("level", 1)
@@ -72,145 +57,185 @@ init("completed_tasks", [])
 init("manual_tasks", [])
 init("boss_hp", 100)
 init("last_day", "")
-init("last_msg", "Awaiting authorization, Jessica...")
+init("last_msg", "Waiting on you, Jessica.")
+init("combo", 0)
+init("last_task_time", time.time())
+init("negan_mood", 0)
+init("last_interrupt", 0)
+init("weekly", [0]*7)
 
-# --- 4. THE VOICE ENGINE ---
-def negan_speak(text):
-    st.session_state.last_msg = text
-    st.toast(text)
-    st.markdown(f"""
-        <script>
-        window.speechSynthesis.cancel();
-        var msg = new SpeechSynthesisUtterance("{text}");
-        msg.rate = 0.8; msg.pitch = 0.5;
-        window.speechSynthesis.speak(msg);
-        </script>
-    """, unsafe_allow_html=True)
-
-# --- 5. MORNING INITIALIZATION ---
+# --- TIME ---
 central = pytz.timezone('US/Central')
-today = str(datetime.datetime.now(central).date())
+now = datetime.datetime.now(central)
+today = str(now.date())
+weekday = now.weekday()
 
+# --- DAILY RESET ---
 if st.session_state.last_day != today:
     st.session_state.completed_tasks = []
     st.session_state.last_day = today
-    # Auto-pick morning greeting
-    st.session_state.last_msg = random.choice(QUOTES["morning"])
+    st.session_state.last_msg = random.choice([
+        "Rise and shine.",
+        "Let's get to work.",
+        "New day. My rules."
+    ])
     save_data()
 
-# --- 6. HEADER & NEGAN VISUAL ---
+# --- VOICE ---
+def negan_speak(text):
+    st.session_state.last_msg = text
+    st.toast(text)
+
+    st.markdown(f"""
+    <script>
+    window.speechSynthesis.cancel();
+    var msg = new SpeechSynthesisUtterance("{text}");
+    msg.rate = 0.85;
+    msg.pitch = 0.6;
+    speechSynthesis.speak(msg);
+    </script>
+    """, unsafe_allow_html=True)
+
+# --- HEADER ---
 st.title("🏏 THE SANCTUARY")
 
-st.markdown(f"""
-    <div class="negan-box">
-        <h3 style="margin:0; font-size:16px;">🧟 NEGAN SAYS:</h3>
-        <p style="font-size:22px; font-style:italic; margin-top:10px;">"{st.session_state.last_msg}"</p>
-    </div>
-""", unsafe_allow_html=True)
+col1, col2 = st.columns([1,3])
 
-# STATS BAR
+with col1:
+    if os.path.exists("negan.png"):
+        st.image("negan.png", use_container_width=True)
+
+with col2:
+    st.markdown(f"""
+    <div class="negan-box">
+    🧟 "{st.session_state.last_msg}"
+    </div>
+    """, unsafe_allow_html=True)
+
+# --- INTERRUPT SYSTEM ---
+now_time = time.time()
+if now_time - st.session_state.last_interrupt > random.randint(180,300):
+    st.session_state.last_interrupt = now_time
+    msg = random.choice([
+        "Do one task. Now.",
+        "Move.",
+        "Stop stalling.",
+        "2 minutes. Go."
+    ])
+    st.error(f"⚠️ {msg}")
+    negan_speak(msg)
+
+# --- STATS ---
 c1, c2, c3 = st.columns(3)
 c1.metric("LEVEL", st.session_state.level)
 c2.metric("POINTS", st.session_state.points)
-c3.metric("BOSS HP", f"{st.session_state.boss_hp}%")
-st.progress(st.session_state.xp / 100, text=f"XP: {st.session_state.xp}/100")
+c3.metric("BOSS", f"{st.session_state.boss_hp}%")
 
-# --- 7. MISSIONS (CORE FEATURE) ---
+st.progress(st.session_state.xp / 100)
+
+# --- MISSIONS ---
 st.write("## 🎯 MISSIONS")
-with st.expander("➕ ADD CUSTOM MISSION"):
-    new_t = st.text_input("Assign a new task for Jessica:")
-    if st.button("CONFIRM TASK"):
-        if new_t:
-            st.session_state.manual_tasks.append(new_t)
-            negan_speak(f"Adding {new_t}. Don't screw it up.")
-            save_data()
-            st.rerun()
 
-presets = ["Coffee Recharge", "Clean Workspace", "Laundry", "Daily Reset"]
-all_tasks = presets + st.session_state.manual_tasks
+presets = ["Coffee", "Clean", "Laundry", "Reset"]
+tasks = presets + st.session_state.manual_tasks
 
-for t in all_tasks:
+for t in tasks:
     if t not in st.session_state.completed_tasks:
         if st.button(f"✔️ {t}", key=t):
+
+            now_time = time.time()
+            if now_time - st.session_state.last_task_time < 120:
+                st.session_state.combo += 1
+            else:
+                st.session_state.combo = 1
+
+            st.session_state.last_task_time = now_time
+
+            bonus = st.session_state.combo * 5
+
             st.session_state.completed_tasks.append(t)
-            st.session_state.points += 25
-            st.session_state.xp += 20
+            st.session_state.points += 25 + bonus
+            st.session_state.xp += 20 + bonus
+            st.session_state.weekly[weekday] += 1
+
+            if st.session_state.combo >= 3:
+                negan_speak("That's momentum.")
+            else:
+                negan_speak("Good.")
+
             if st.session_state.xp >= 100:
                 st.session_state.level += 1
                 st.session_state.xp = 0
-                negan_speak("Level up, Jessica! You're becoming an asset.")
-            else:
-                negan_speak(random.choice(QUOTES["praise"]))
+                negan_speak("Level up.")
+
             save_data()
             st.rerun()
     else:
-        st.button(f"✅ {t} (SECURED)", disabled=True, key=f"done_{t}")
+        st.button(f"✅ {t}", disabled=True, key=f"d{t}")
 
-st.write("---")
+# --- FOCUS ---
+st.write("## ⏱️ FOCUS")
 
-# --- 8. THE GAMES (3 FEATURES) ---
-st.write("## 🎮 THE GAMES")
+if st.button("2 MIN"):
+    st.session_state.timer = time.time()
+    st.session_state.timer_len = 120
 
-tab1, tab2, tab3 = st.tabs(["🧟 BOSS FIGHT", "🔦 SCAVENGE", "🎲 SUPPLY RUN"])
+if st.button("5 MIN"):
+    st.session_state.timer = time.time()
+    st.session_state.timer_len = 300
 
-with tab1:
-    st.write("### ATTACK THE BOSS")
-    st.progress(st.session_state.boss_hp / 100)
-    if st.button("💥 STRIKE WITH LUCILLE", type="primary"):
-        dmg = random.randint(20, 45)
-        st.session_state.boss_hp -= dmg
-        if st.session_state.boss_hp <= 0:
-            st.session_state.boss_hp = 100
-            st.session_state.points += 150
-            st.balloons()
-            negan_speak("Boss down! Take the spoils, Jessica.")
+if "timer" in st.session_state:
+    remain = max(0, st.session_state.timer_len - int(time.time() - st.session_state.timer))
+    st.write(remain)
+    if remain == 0:
+        st.session_state.xp += 30
+        negan_speak("Focus complete.")
+        del st.session_state.timer
+
+# --- GAMES ---
+st.write("## 🎮")
+
+if st.button("⚔️ ATTACK"):
+    dmg = random.randint(20,40)
+    st.session_state.boss_hp -= dmg
+    if dmg > 35:
+        st.success(f"CRITICAL {dmg}")
+    else:
+        st.info(dmg)
+
+    if st.session_state.boss_hp <= 0:
+        st.session_state.boss_hp = 100
+        st.session_state.points += 100
+        st.balloons()
+        negan_speak("Boss down.")
+
+if st.button("🔦 SCAVENGE"):
+    if st.session_state.points >= 20:
+        st.session_state.points -= 20
+        if random.random() > 0.5:
+            win = random.randint(40,80)
+            st.session_state.points += win
+            negan_speak("Jackpot.")
         else:
-            negan_speak(f"You hit for {dmg} damage!")
-        save_data()
-        st.rerun()
+            negan_speak("Nothing.")
 
-with tab2:
-    st.write("### SCAVENGE FOR LOOT")
-    st.write("Costs 20 Points. Risk it all?")
-    if st.button("🔦 ENTER THE DARK"):
-        if st.session_state.points >= 20:
-            st.session_state.points -= 20
-            roll = random.random()
-            if roll > 0.5:
-                win = random.randint(40, 80)
-                st.session_state.points += win
-                negan_speak(f"Jackpot! You found {win} points.")
-            else:
-                negan_speak("Nothing but walkers out there. Waste of time.")
-            save_data()
-            st.rerun()
-        else:
-            st.warning("Not enough points, Jessica.")
+# --- INTERRUPT BUTTON ---
+if st.button("🧠 SNAP ME OUT OF IT"):
+    msg = random.choice(["Do one task", "Move", "Drink water"])
+    st.error(msg)
+    negan_speak(msg)
 
-with tab3:
-    st.write("### SUPPLY RUN (LUCK DRAW)")
-    st.write("Free daily draw. Win XP or Points!")
-    if st.button("🎲 PULL THE TRIGGER"):
-        outcome = random.choice(["+10 XP", "+20 Points", "No Luck", "+50 Points!"])
-        if "+10 XP" in outcome: st.session_state.xp = min(100, st.session_state.xp + 10)
-        if "Points" in outcome: 
-            val = 20 if "20" in outcome else 50
-            st.session_state.points += val
-        negan_speak(f"Supply Run result: {outcome}")
-        save_data()
-        st.rerun()
+# --- WEEKLY ---
+st.write("## 📊 WEEKLY")
+cols = st.columns(7)
+for i, v in enumerate(st.session_state.weekly):
+    cols[i].metric(str(i+1), v)
 
-# --- 9. SIDEBAR & MAINTENANCE ---
-with st.sidebar:
-    st.title("🛠️ COMMANDS")
-    if st.button("🔊 ACTIVATE VOICE / RE-GREET"):
-        negan_speak(st.session_state.last_msg)
-    
-    st.write("---")
-    if st.button("💀 DELETE ALL DATA"):
-        if os.path.exists(SAVE_FILE): os.remove(SAVE_FILE)
-        st.session_state.clear()
-        st.rerun()
+# --- SIDEBAR ---
+st.sidebar.metric("Points", st.session_state.points)
 
-    st.write(f"**Current Day:** {today}")
-    st.write("**Survivor:** Jessica")
+if st.sidebar.button("RESET"):
+    if os.path.exists(SAVE_FILE):
+        os.remove(SAVE_FILE)
+    st.session_state.clear()
+    st.rerun()
